@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpaceX Landing Simulator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div id="ui-layer">
+        <div id="telemetry">
+            <div id="telemetry-content">
+                <div>ALT: <span id="alt-val">0</span> m</div>
+                <div>SPD: <span id="spd-val">0</span> m/s</div>
+                <div>FUEL: <span id="fuel-val">100</span>%</div>
+                <div>ANG: <span id="ang-val">0</span>°</div>
+                <div id="autopilot-status" class="status-off">AUTOPILOT: OFF</div>
+            </div>
+            <div id="landing-outcome"></div>
+        </div>
+        <div id="controls-help">
+            <h3>CONTROLS</h3>
+            <div>[W/S] Throttle</div>
+            <div>[A/D] Gimbal</div>
+            <div>[Q/E] RCS</div>
+            <div>[P] Autopilot</div>
+            <div>[R] Reset</div>
+        </div>
+        <div id="throttle-bar-container">
+            <div id="throttle-bar-fill"></div>
+        </div>
+    </div>
+    <canvas id="simCanvas"></canvas>
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>
