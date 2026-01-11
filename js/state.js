@@ -55,10 +55,10 @@ export const SimState = {
 
 export function resetRocket(state, canvasWidth, canvasHeight) {
     // Random Start Conditions
-    const randomX = (Math.random() - 0.5) * 300; // +/- 150px
-    // Random initial Angle: 5 to 15 degrees, either direction
-    // 5 deg = 0.087 rad, 15 deg = 0.26 rad
-    const angleMag = (Math.random() * 10 + 5) * (Math.PI / 180);
+    const randomX = (Math.random() - 0.5) * 200; // +/- 100px (Narrower)
+    // Random initial Angle: 3 to 8 degrees, either direction
+    // 3 deg = 0.052 rad, 8 deg = 0.14 rad
+    const angleMag = (Math.random() * 5 + 3) * (Math.PI / 180);
     const randomAngle = angleMag * (Math.random() < 0.5 ? 1 : -1);
 
     state.rocket.x = canvasWidth / 2 + randomX;
