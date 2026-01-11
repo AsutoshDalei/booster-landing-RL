@@ -23,6 +23,32 @@ export function initUI() {
     UI.throttleBar = document.getElementById('throttle-bar-fill');
 }
 
+export function initTuning(state) {
+    const ids = [
+        { sl: 'inp-ign', val: 'val-ign', key: 'ignitionAltitude' },
+        { sl: 'inp-kp', val: 'val-kp', key: 'gimbalKp' },
+        { sl: 'inp-kd', val: 'val-kd', key: 'gimbalKd' }
+    ];
+
+    ids.forEach(item => {
+        const slider = document.getElementById(item.sl);
+        const label = document.getElementById(item.val);
+
+        if (slider && label) {
+            // Set Initial
+            slider.value = state.tuning[item.key];
+            label.innerText = state.tuning[item.key];
+
+            // Listen
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state.tuning[item.key] = val;
+                label.innerText = val;
+            });
+        }
+    });
+}
+
 export function updateUI(state) {
     const r = state.rocket;
     const padY = state.pad.y; // Assumed ground level

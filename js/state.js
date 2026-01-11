@@ -50,6 +50,13 @@ export const SimState = {
         phase: 'COAST', // COAST, BURN, LANDED
         engineEnabled: true, // Master switch for guidance
         landingResult: null // null, 'SUCCESS', 'FAILURE'
+    },
+
+    tuning: {
+        ignitionAltitude: 400,
+        gimbalKp: 2.5,
+        gimbalKd: 1.5,
+        rcsDeadband: 0.02
     }
 };
 

@@ -70,12 +70,17 @@ function handleCoast(state, g, r, altitude) {
 
     // Note: r.vy is Positive Down (Descent).
     if (r.vy > 10) { // Only if falling meaningfully
-        const stoppingDist = (r.vy * r.vy) / (2 * NET_ACCEL);
-        const ignitionAlt = stoppingDist * 1.3;
+        // User Override: Default ignition altitude check
+        const userIgnition = state.tuning.ignitionAltitude || 400;
 
-        if (altitude <= ignitionAlt) {
-            console.log("GUIDANCE: IGNITION - Starting Suicide Burn");
-            console.log(`Alt: ${altitude.toFixed(1)}, StopDist: ${stoppingDist.toFixed(1)}`);
+        // Physics Safety Check (still calc stopping dist just in case user sets it absurdly low? 
+        // No, current logic is "Safety Factor 1.3". 
+        // Let's rely on user setting mainly, or MAX of both?
+        // Prompt says: "When set, the suicide-burn logic uses this altitude as the ignition trigger"
+        // Let's use the USER value as the primary trigger.
+
+        if (altitude <= userIgnition) {
+            console.log("GUIDANCE: IGNITION - User Trigger");
             g.phase = 'BURN';
             g.engineEnabled = true;
         }

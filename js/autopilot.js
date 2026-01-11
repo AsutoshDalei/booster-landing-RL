@@ -67,6 +67,12 @@ export const Autopilot = {
             r.throttle = 0;
             // Still perform stabilization? Yes, RCS still works.
         } else {
+            // Update PID Gains from State
+            if (state.tuning) {
+                GimbalPID.kp = state.tuning.gimbalKp;
+                GimbalPID.kd = state.tuning.gimbalKd;
+            }
+
             // 3. Velocity Hold (Throttle)
             // Use Guidance Target if available, else default
             const targetVy = (g && g.targetVy !== undefined) ? g.targetVy : 50.0;
@@ -78,21 +84,26 @@ export const Autopilot = {
 
             const throttleCmd = ThrottlePID.update(targetVy, r.vy, dt);
 
-            // Ascent Prevention Clamp
-            // If targetVy is positive (Descent) and r.vy is small (near hover) or negative (Ascent),
-            // we must limit throttle to ensure we don't fly up.
-            // Hover Throttle ~= G / T_ACCEL_MAX ~= 100 / 300 = 0.33
-
+            // Ascent Prevention Clamp (Relaxed)
+            // Allow slight ascent (negative vy) for correction, but clamp ceiling
+            // Hover Throttle ~= 0.33
             let finalThrottle = throttleCmd;
 
-            // If we are ascending (vy < 0) or nearly stopped (vy < 2), 
-            // limit throttle to be below Hover threshold to force gravity to win.
-            if (r.vy < 2.0) {
-                const hoverThrottle = 100.0 / 300.0; // G / MaxAccel
-                const maxAllowed = hoverThrottle * 0.95; // Ensure net accel is Downward
-                if (finalThrottle > maxAllowed) {
-                    finalThrottle = maxAllowed;
-                }
+            // If strictly ascending fast (vy < -5), clamp hard.
+            // If hovering (vy ~ 0), allow up to 1.1x Hover to maintain position
+            const hoverThrottle = 100.0 / 300.0;
+
+            if (r.vy < -2.0) {
+                // Ascent detected. Limit throttle to ensure we don't accelerate UP further.
+                // Allow holding current upward velocity? No, gravity should win eventually.
+                // Set limit to Hover * 0.95 (Net Downward Accel)
+                const maxAllowed = hoverThrottle * 0.95;
+                if (finalThrottle > maxAllowed) finalThrottle = maxAllowed;
+            } else if (r.vy < 5.0) {
+                // Near hover. Allow slight over-throttle to correct descent rate, but cap it.
+                // Cap at Hover * 1.5?
+                const maxAllowed = hoverThrottle * 1.5;
+                if (finalThrottle > maxAllowed) finalThrottle = maxAllowed;
             }
 
             r.throttle = finalThrottle;

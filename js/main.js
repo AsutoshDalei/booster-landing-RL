@@ -11,7 +11,7 @@ import { stepPhysics } from './physics.js';
 import { initControls, updateControls } from './controls.js';
 import { Autopilot } from './autopilot.js';
 import { Guidance } from './guidance.js';
-import { initUI, updateUI } from './ui.js';
+import { initUI, updateUI, initTuning } from './ui.js';
 
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
@@ -32,6 +32,7 @@ window.addEventListener('resize', resize);
 resize(); // Initial setup
 initControls(SimState, resetGame);
 initUI();
+initTuning(SimState);
 
 // --- Physics Loop ---
 let lastTime = 0;
