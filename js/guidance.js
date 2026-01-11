@@ -21,6 +21,23 @@ export const Guidance = {
         const r = state.rocket;
         const pad = state.pad;
 
+        // 0. Screen Boundary Check (Fail if out of bounds)
+        // Allow some headroom at top for spawning, but side/bottom bounds are strict
+        const canvasWidth = 800; // Hardcoded or passed in state? Ideally passed. 
+        // We'll assume typical width or check if state has it. 
+        // state.js doesn't store canvas dims.
+        // Let's use loose bounds or rely on render clipping?
+        // User rq: "Rocket center leaves visible screen bounds"
+        if (r.y > 1000 || r.x < -50 || r.x > 850) { // Approx bounds
+            if (g.landingResult === null) {
+                g.landingResult = 'FAILURE';
+                g.engineEnabled = false;
+                g.phase = 'LANDED';
+                console.log("GUIDANCE: FAILURE - Out of bounds");
+            }
+            return;
+        }
+
         // Altitude Calculation
         const padTop = pad.y - pad.height / 2;
         const rocketBottom = r.y + r.height / 2;
@@ -49,16 +66,16 @@ function handleCoast(state, g, r, altitude) {
     // v^2 = u^2 + 2as. Final v=0. u=Current Vy. 
     // s = v^2 / 2a.
     // Accel a = NET_ACCEL.
-    // Safety buffer: 1.1x
+    // Safety Factor: 1.3 (Earlier ignition)
 
     // Note: r.vy is Positive Down (Descent).
-    if (r.vy > 0) { // Only if falling
+    if (r.vy > 10) { // Only if falling meaningfully
         const stoppingDist = (r.vy * r.vy) / (2 * NET_ACCEL);
+        const ignitionAlt = stoppingDist * 1.3;
 
-        // Trigger if we are close to the limit
-        // Use a safety margin (e.g. 10% or 50px)
-        if (altitude <= stoppingDist * 1.05 + 50) {
+        if (altitude <= ignitionAlt) {
             console.log("GUIDANCE: IGNITION - Starting Suicide Burn");
+            console.log(`Alt: ${altitude.toFixed(1)}, StopDist: ${stoppingDist.toFixed(1)}`);
             g.phase = 'BURN';
             g.engineEnabled = true;
         }
@@ -72,54 +89,42 @@ function handleBurn(state, g, r, altitude, pad) {
     g.engineEnabled = true;
 
     // 1. Vertical Guidance (Trajectory)
-    // Desired Velocity at this altitude
 
     let desiredVy = 0;
 
     if (altitude > 0) {
         // Simple Square Root profile
-        const a_target = NET_ACCEL * 0.85;
+        // V = Sqrt(2 * a * h)
+        // Use a_target slightly less than max to ensure we can always follow it
+        const a_target = NET_ACCEL * 0.8;
         desiredVy = Math.sqrt(2 * a_target * altitude);
 
-        // Clamp minimum descent speed when close to ensure touchdown
-        // We want to force it to LAND, not hover.
-        // If altitude is very low (<10m), target speed should be at least 15 m/s
-        if (altitude < 20) desiredVy = Math.max(desiredVy, 15);
-        else desiredVy = Math.max(desiredVy, 10);
+        // Clamp minimum descent speed when close
+        // Ensure strictly positive (Descent)
+        if (altitude < 50) desiredVy = Math.max(desiredVy, 10);
+        else desiredVy = Math.max(desiredVy, 20);
     } else {
-        desiredVy = 5; // Positive = Descent. 
+        desiredVy = 5;
     }
 
-    // Crucial: Never target Ascent (Negative Vy).
-    // The physics/PID might still ascend if throttle is too high, 
-    // but the setpoint must validly request descent.
-    g.targetVy = Math.max(0, desiredVy);
+    // Force Descent: targetVy must be >= 0
+    g.targetVy = Math.max(5, desiredVy);
 
     // 2. Horizontal Guidance (Steering)
     const xError = r.x - pad.x;
     const K_STEER = 0.003;
     let cmdAngle = -xError * K_STEER;
-
-    const MAX_TILT = 0.25; // ~15 degrees
+    const MAX_TILT = 0.25;
     cmdAngle = Math.max(-MAX_TILT, Math.min(MAX_TILT, cmdAngle));
-
     g.targetAngle = cmdAngle;
 
     // 3. Touchdown Detection
     if (r.groundContact) {
-        // Determine Success
-        // Velocity must be low (< 40)
-        // Angle must be low (< 0.1 rad roughly 5 deg)
-        // Both legs contact ideally, but let's just check stability
-
-        // Check if stopped
         if (Math.abs(r.vy) < 5) {
-            console.log("GUIDANCE: TOUCHDOWN");
             g.phase = 'LANDED';
 
             const angleDeg = Math.abs(r.angle * 180 / Math.PI);
             const isUpright = angleDeg < 5;
-            const isSlow = Math.abs(r.vy) < 40; // Impact speed check (already happened on physics contact technically)
             const onPad = Math.abs(r.x - pad.x) < (pad.width / 2 + r.width);
 
             if (isUpright && onPad) {

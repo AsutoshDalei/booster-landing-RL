@@ -69,7 +69,25 @@ export const Autopilot = {
             // Error = -100. Output = +5. Increase Throttle.
 
             const throttleCmd = ThrottlePID.update(targetVy, r.vy, dt);
-            r.throttle = throttleCmd;
+
+            // Ascent Prevention Clamp
+            // If targetVy is positive (Descent) and r.vy is small (near hover) or negative (Ascent),
+            // we must limit throttle to ensure we don't fly up.
+            // Hover Throttle ~= G / T_ACCEL_MAX ~= 100 / 300 = 0.33
+
+            let finalThrottle = throttleCmd;
+
+            // If we are ascending (vy < 0) or nearly stopped (vy < 2), 
+            // limit throttle to be below Hover threshold to force gravity to win.
+            if (r.vy < 2.0) {
+                const hoverThrottle = 100.0 / 300.0; // G / MaxAccel
+                const maxAllowed = hoverThrottle * 0.95; // Ensure net accel is Downward
+                if (finalThrottle > maxAllowed) {
+                    finalThrottle = maxAllowed;
+                }
+            }
+
+            r.throttle = finalThrottle;
         }
 
         // 1. Angle Stabilization (Gimbal)
