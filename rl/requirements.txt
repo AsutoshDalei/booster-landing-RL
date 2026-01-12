@@ -1,0 +1,4 @@
+requests
+numpy
+# torch is assumed to be in the base image, but we can list it if we were starting from python:3.9
+# For the pytorch/pytorch base image, it's pre-installed.
