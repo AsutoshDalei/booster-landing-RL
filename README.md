@@ -2,6 +2,10 @@
 
 A physics-based demonstration of propulsive landing logic, autopilot stabilization, and trajectory guidance. This simulation showcases the control theory principles used to land Falcon-class boosters.
 
+The project is a work in progress and is not yet complete. It is inspired by SpaceX and work of https://github.com/EmbersArc/gym-rocketlander. 
+
+**AI**: The entirety was built by Antigravity, ChatGPT and I was just prompting them.
+
 ## Project Overview
 
 This application simulates the complex dynamics of a rocket booster returning from space. It runs a real-time deterministic physics engine and uses a dual-loop PID autopilot to manage vertical velocity (throttle) and angular stability (gimbal/RCS).
