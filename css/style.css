@@ -240,4 +240,87 @@ html {
     color: #bf616a;
 }
 
+/* Optimizer Styles */
+.optimizer-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.optimizer-section h4 {
+    margin: 0 0 10px 0;
+    font-size: 10px;
+    color: #88c0d0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.optimize-btn {
+    width: 100%;
+    padding: 8px;
+    background: rgba(136, 192, 208, 0.2);
+    border: 1px solid rgba(136, 192, 208, 0.5);
+    color: #88c0d0;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background 0.2s;
+    margin-bottom: 8px;
+}
+
+.optimize-btn:hover {
+    background: rgba(136, 192, 208, 0.3);
+}
+
+.optimize-btn:active {
+    background: rgba(136, 192, 208, 0.4);
+}
+
+.optimize-btn-stop {
+    background: rgba(191, 97, 106, 0.2);
+    border-color: rgba(191, 97, 106, 0.5);
+    color: #bf616a;
+}
+
+.optimize-btn-stop:hover {
+    background: rgba(191, 97, 106, 0.3);
+}
+
+.optimizer-status {
+    font-size: 9px;
+    color: #888;
+    margin-bottom: 5px;
+    min-height: 12px;
+}
+
+.optimizer-progress {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.optimizer-progress-bar {
+    height: 100%;
+    background: #88c0d0;
+    width: 0%;
+    transition: width 0.2s;
+}
+
+.optimizer-results {
+    font-size: 9px;
+    color: #aaa;
+    line-height: 1.4;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.optimizer-results strong {
+    color: #ebcb8b;
+}
+
 /* Red */

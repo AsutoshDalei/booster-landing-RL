@@ -11,7 +11,8 @@ import { stepPhysics } from './physics.js';
 import { initControls, updateControls } from './controls.js';
 import { Autopilot } from './autopilot.js';
 import { Guidance } from './guidance.js';
-import { initUI, updateUI, initTuning } from './ui.js';
+import { initUI, updateUI, initTuning, initOptimizer } from './ui.js';
+import { ParameterOptimizer, setCanvasDimensions } from './paramOptimizer.js';
 
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
@@ -21,6 +22,7 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     resetRocket(SimState, canvas.width, canvas.height);
+    setCanvasDimensions(canvas.width, canvas.height);
 }
 
 function resetGame() {
@@ -33,6 +35,36 @@ resize(); // Initial setup
 initControls(SimState, resetGame);
 initUI();
 initTuning(SimState);
+
+// Initialize parameter optimizer
+// State factory: creates a deep copy of the state structure
+function createStateCopy() {
+    const copy = JSON.parse(JSON.stringify(SimState));
+    // Ensure all nested objects are properly initialized
+    copy.rocket = { ...SimState.rocket };
+    copy.pad = { ...SimState.pad };
+    copy.guidance = { ...SimState.guidance };
+    copy.tuning = { ...SimState.tuning };
+    copy.particles = [];
+    return copy;
+}
+
+const optimizer = new ParameterOptimizer(
+    createStateCopy,
+    stepPhysics,
+    Guidance,
+    Autopilot,
+    resetRocket
+);
+
+// Update canvas dimensions when window resizes
+function updateOptimizerDimensions() {
+    setCanvasDimensions(canvas.width, canvas.height);
+}
+updateOptimizerDimensions();
+window.addEventListener('resize', updateOptimizerDimensions);
+
+initOptimizer(SimState, optimizer);
 
 // --- Physics Loop ---
 let lastTime = 0;

@@ -46,7 +46,7 @@ class FalconEnv:
         # Result: [x, y, vx, vy, angle, angularVelocity, throttle, gimbal, fuel, groundContact, landingResult, done, stepCount]
         # Randomize "Anywhere"
         self.state = {
-            'x': np.random.uniform(100.0, 700.0),    # Anywhere (avoid extreme edges)
+            'x': np.random.uniform(250.0, 550.0),    # Center +/- 150 (400 +/- 150)
             'y': np.random.uniform(50.0, 300.0),     # Start high-ish
             'vx': np.random.uniform(-40.0, 40.0),    # More drift
             'vy': np.random.uniform(0.0, 20.0),      # Initial downward velocity

@@ -46,7 +46,7 @@ export const Guidance = {
         // Phase Logic
         switch (g.phase) {
             case 'COAST':
-                handleCoast(state, g, r, altitude);
+                handleCoast(state, g, r, altitude, pad);
                 break;
             case 'BURN':
                 handleBurn(state, g, r, altitude, pad);
@@ -58,7 +58,7 @@ export const Guidance = {
     }
 };
 
-function handleCoast(state, g, r, altitude) {
+function handleCoast(state, g, r, altitude, pad) {
     g.engineEnabled = false; // Cut engine in coast
 
     // Switch to BURN if stopping distance > altitude
@@ -73,14 +73,17 @@ function handleCoast(state, g, r, altitude) {
         // User Override: Default ignition altitude check
         const userIgnition = state.tuning.ignitionAltitude || 400;
 
-        // Physics Safety Check (still calc stopping dist just in case user sets it absurdly low? 
-        // No, current logic is "Safety Factor 1.3". 
-        // Let's rely on user setting mainly, or MAX of both?
-        // Prompt says: "When set, the suicide-burn logic uses this altitude as the ignition trigger"
-        // Let's use the USER value as the primary trigger.
+        // "Side Engines" Logic / Early Alignment:
+        // If we are far from the pad, ignite EARLIER to allow time for traversal.
+        // Heuristic: Add buffer to ignition altitude based on distance.
+        const distToPad = Math.abs(r.x - pad.x);
+        // If dist is 300px, add say 200px to ignition height
+        const extraHeight = distToPad * 0.8;
 
-        if (altitude <= userIgnition) {
-            console.log("GUIDANCE: IGNITION - User Trigger");
+        const triggerAlt = userIgnition + extraHeight;
+
+        if (altitude <= triggerAlt) {
+            console.log(`GUIDANCE: IGNITION - Distance Trigger (Dist: ${distToPad.toFixed(0)})`);
             g.phase = 'BURN';
             g.engineEnabled = true;
         }

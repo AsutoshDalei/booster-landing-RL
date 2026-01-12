@@ -71,6 +71,17 @@ export const Autopilot = {
             if (state.tuning) {
                 GimbalPID.kp = state.tuning.gimbalKp;
                 GimbalPID.kd = state.tuning.gimbalKd;
+                
+                // Update Throttle PID gains from tuning
+                if (state.tuning.throttleKp !== undefined) {
+                    ThrottlePID.kp = state.tuning.throttleKp;
+                }
+                if (state.tuning.throttleKi !== undefined) {
+                    ThrottlePID.ki = state.tuning.throttleKi;
+                }
+                if (state.tuning.throttleKd !== undefined) {
+                    ThrottlePID.kd = state.tuning.throttleKd;
+                }
             }
 
             // 3. Velocity Hold (Throttle)

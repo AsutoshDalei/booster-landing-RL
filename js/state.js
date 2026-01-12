@@ -56,19 +56,23 @@ export const SimState = {
         ignitionAltitude: 400,
         gimbalKp: 2.5,
         gimbalKd: 1.5,
-        rcsDeadband: 0.02
+        rcsDeadband: 0.02,
+        throttleKp: -0.08,
+        throttleKi: -0.01,
+        throttleKd: -0.03
     }
 };
 
 export function resetRocket(state, canvasWidth, canvasHeight) {
     // Random Start Conditions
-    const randomX = (Math.random() - 0.5) * 200; // +/- 100px (Narrower)
-    // Random initial Angle: 3 to 8 degrees, either direction
-    // 3 deg = 0.052 rad, 8 deg = 0.14 rad
-    const angleMag = (Math.random() * 5 + 3) * (Math.PI / 180);
-    const randomAngle = angleMag * (Math.random() < 0.5 ? 1 : -1);
+    // Random Start Conditions
+    // Center +/- 150px
+    const range = 300; // Total range width
+    state.rocket.x = (canvasWidth / 2) + (Math.random() - 0.5) * range;
 
-    state.rocket.x = canvasWidth / 2 + randomX;
+    // Random initial Angle: 3 to 15 degrees (Wider range)
+    const angleMag = (Math.random() * 12 + 3) * (Math.PI / 180);
+    const randomAngle = angleMag * (Math.random() < 0.5 ? 1 : -1);
     state.rocket.y = canvasHeight * 0.1; // Start high
     state.rocket.angle = randomAngle;
     state.rocket.vx = 0;
