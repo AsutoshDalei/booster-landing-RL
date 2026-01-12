@@ -148,6 +148,8 @@ export function stepPhysics(state, dt) {
 
     if (rocketBottom >= groundY) {
         // Penetration detected
+        r.groundContact = true;
+
         // 1. Position Collection (Clamp)
         r.y = groundY - r.height / 2;
 
@@ -162,7 +164,6 @@ export function stepPhysics(state, dt) {
             // Restitution (Bounce)
             if (r.vy < STOP_THRESHOLD) {
                 r.vy = 0;
-                r.groundContact = true;
                 // If angle is small, assume legs are touching
                 if (Math.abs(r.angle) < 0.2) {
                     r.leg1Contact = true;

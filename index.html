@@ -9,47 +9,87 @@
 </head>
 
 <body>
+    <canvas id="simCanvas"></canvas>
     <div id="ui-layer">
-        <div id="telemetry">
-            <div id="telemetry-content">
-                <div>ALT: <span id="alt-val">0</span> m</div>
-                <div>SPD: <span id="spd-val">0</span> m/s</div>
-                <div>FUEL: <span id="fuel-val">100</span>%</div>
-                <div>ANG: <span id="ang-val">0</span>°</div>
-                <div id="autopilot-status" class="status-off">AUTOPILOT: OFF</div>
+        <!-- Top Left: Telemetry -->
+        <div id="telemetry-panel" class="hud-panel">
+            <h3>TELEMETRY</h3>
+            <div class="hud-row">
+                <span class="hud-label">ALTITUDE</span>
+                <span class="hud-value"><span id="alt-val">0.0</span> m</span>
             </div>
-            <div id="landing-outcome"></div>
-        </div>
-        <div id="controls-help">
-            <h3>CONTROLS</h3>
-            <div>[W/S] Throttle</div>
-            <div>[A/D] Gimbal</div>
-            <div>[Q/E] RCS</div>
-            <div>[P] Autopilot</div>
-            <div>[R] Reset</div>
+            <div class="hud-row">
+                <span class="hud-label">VELOCITY</span>
+                <span class="hud-value"><span id="spd-val">0.0</span> m/s</span>
+            </div>
+            <div class="hud-row">
+                <span class="hud-label">ANGLE</span>
+                <span class="hud-value"><span id="ang-val">0.0</span>°</span>
+            </div>
+            <div class="hud-row">
+                <span class="hud-label">FUEL</span>
+                <span class="hud-value"><span id="fuel-val">100</span>%</span>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <div class="hud-row">
+                <span class="hud-label">AUTOPILOT</span>
+                <span id="autopilot-status" class="hud-value status-off">OFF</span>
+            </div>
+            <div class="hud-row">
+                <span class="hud-label">CONTACT</span>
+                <div id="leg-indicators">
+                    <div id="leg-left" class="leg-light">L</div>
+                    <div id="leg-right" class="leg-light">R</div>
+                </div>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <div class="hud-row">
+                <span class="hud-label">GIMBAL</span>
+                <div id="gimbal-visual">
+                    <div id="gimbal-arrow"></div>
+                </div>
+            </div>
+
+            <div id="landing-outcome">STATUS: READY</div>
         </div>
 
-        <div id="tuning-panel">
-            <h3>TUNING</h3>
+        <!-- Top Right: Tuning -->
+        <div id="tuning-panel" class="hud-panel">
+            <h3>GUIDANCE TUNING</h3>
             <div class="control-group">
-                <label>Ignition Alt: <span id="val-ign">400</span>m</label>
+                <label>IGNITION ALTITUDE: <span id="val-ign" class="val-highlight">400</span> m</label>
                 <input type="range" id="inp-ign" min="50" max="600" value="400" step="10">
             </div>
             <div class="control-group">
-                <label>Gimbal Kp: <span id="val-kp">2.5</span></label>
+                <label>STABILITY (Kp): <span id="val-kp" class="val-highlight">2.5</span></label>
                 <input type="range" id="inp-kp" min="0" max="10" value="2.5" step="0.1">
             </div>
             <div class="control-group">
-                <label>Gimbal Kd: <span id="val-kd">1.5</span></label>
+                <label>DAMPING (Kd): <span id="val-kd" class="val-highlight">1.5</span></label>
                 <input type="range" id="inp-kd" min="0" max="5" value="1.5" step="0.1">
             </div>
         </div>
 
+        <!-- Bottom Left: Controls -->
+        <div id="controls-panel" class="hud-panel">
+            <h3>FLIGHT CONTROLS</h3>
+            <div class="key-row"><span class="key">W</span> <span class="key">S</span> THROTTLE</div>
+            <div class="key-row"><span class="key">A</span> <span class="key">D</span> GIMBAL</div>
+            <div class="key-row"><span class="key">Q</span> <span class="key">E</span> RCS</div>
+            <div class="key-row"><span class="key">P</span> AUTOPILOT</div>
+            <div class="key-row"><span class="key">R</span> RESET SIM</div>
+        </div>
+
+        <!-- Throttle Indicator -->
         <div id="throttle-bar-container">
+            <div id="throttle-label">THRUST</div>
             <div id="throttle-bar-fill"></div>
         </div>
     </div>
-    <canvas id="simCanvas"></canvas>
     <script type="module" src="js/main.js"></script>
 </body>
 

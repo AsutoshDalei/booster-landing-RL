@@ -13,6 +13,10 @@ html {
     display: block;
     width: 100%;
     height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 /* UI Layer */
@@ -23,114 +27,197 @@ html {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    /* Let clicks pass through to canvas if needed */
-    font-family: 'Courier New', Courier, monospace;
-    color: #ffffff;
-    font-size: 14px;
+    z-index: 20;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    color: #e0e0e0;
+    font-size: 13px;
+    letter-spacing: 0.5px;
 }
 
-#telemetry {
+/* Common HUD Panel Style */
+.hud-panel {
     position: absolute;
+    background: rgba(10, 10, 15, 0.85);
+    /* Dark blueish grey */
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+    /* Allow interaction */
+}
+
+.hud-panel h3 {
+    margin: 0 0 12px 0;
+    font-size: 11px;
+    color: #88c0d0;
+    /* Cyan highlight */
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 5px;
+}
+
+/* Telemetry (Top Left) */
+#telemetry-panel {
     top: 20px;
     left: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 15px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 240px;
 }
 
-#telemetry-content div {
-    margin-bottom: 5px;
+.hud-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    align-items: center;
 }
 
-#autopilot-status {
-    margin-top: 10px;
-    padding-top: 5px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    font-weight: bold;
-}
-
-.status-on {
-    color: #00ff00;
-}
-
-.status-off {
+.hud-label {
     color: #888888;
+    font-size: 11px;
 }
 
+.hud-value {
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.hud-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 8px 0;
+}
+
+/* Leg Indicators */
+#leg-indicators {
+    display: flex;
+    gap: 5px;
+}
+
+.leg-light {
+    width: 20px;
+    height: 16px;
+    background: #333;
+    color: #000;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border-radius: 2px;
+}
+
+.leg-active {
+    background: #00ff00;
+    /* Green */
+    box-shadow: 0 0 5px #00ff00;
+}
+
+/* Gimbal Visual */
+#gimbal-visual {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #444;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#gimbal-arrow {
+    width: 2px;
+    height: 12px;
+    background: #88c0d0;
+    transform-origin: bottom center;
+    /* Pivot at center */
+    position: absolute;
+    bottom: 50%;
+    /* Start from center */
+}
+
+/* Landing Outcome */
 #landing-outcome {
-    margin-top: 15px;
-    font-size: 16px;
+    margin-top: 10px;
+    font-size: 13px;
     font-weight: bold;
     text-align: center;
-    min-height: 20px;
+    display: block;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-#controls-help {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 15px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    text-align: right;
-}
-
+/* Tuning Panel (Top Right) */
 #tuning-panel {
-    position: absolute;
     top: 20px;
     right: 20px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 15px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    width: 200px;
-    pointer-events: auto;
-    /* Enable slider interaction */
-}
-
-#tuning-panel h3 {
-    margin: 0 0 10px 0;
-    font-size: 12px;
-    color: #888888;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    width: 220px;
 }
 
 .control-group {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 .control-group label {
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    font-size: 10px;
+    color: #aaa;
+}
+
+.val-highlight {
+    color: #ebcb8b;
+    /* Yellow/Gold */
+}
+
+/* Controls Panel (Bottom Left) */
+#controls-panel {
+    bottom: 20px;
+    left: 20px;
+    width: 200px;
+}
+
+.key-row {
+    margin-bottom: 6px;
     font-size: 11px;
     color: #ccc;
 }
 
-.control-group input[type=range] {
-    width: 100%;
+.key {
+    display: inline-block;
+    padding: 1px 5px;
+    border: 1px solid #666;
+    border-radius: 3px;
+    background: #222;
+    color: #fff;
+    font-size: 10px;
+    margin-right: 4px;
+    min-width: 12px;
+    text-align: center;
 }
 
-#controls-help h3 {
-    margin: 0 0 10px 0;
-    font-size: 12px;
-    color: #888888;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
+/* Throttle Bar (Absolute Left Center) */
 #throttle-bar-container {
     position: absolute;
-    left: 10px;
+    left: 280px;
+    /* Right of telemetry */
     bottom: 20px;
-    top: 150px;
-    /* Below Telemetry */
-    width: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    top: unset;
+    height: 150px;
+    width: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 2px;
+}
+
+#throttle-label {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: #888;
 }
 
 #throttle-bar-fill {
@@ -139,6 +226,18 @@ html {
     left: 0;
     width: 100%;
     height: 0%;
-    background-color: #ff9900;
-    transition: height 0.1s linear;
+    background-color: #ebcb8b;
+    /* Gold flame color */
+    transition: height 0.05s linear;
 }
+
+.status-on {
+    color: #a3be8c;
+}
+
+/* Green */
+.status-off {
+    color: #bf616a;
+}
+
+/* Red */

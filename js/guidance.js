@@ -125,17 +125,31 @@ function handleBurn(state, g, r, altitude, pad) {
 
     // 3. Touchdown Detection
     if (r.groundContact) {
-        if (Math.abs(r.vy) < 5) {
+        // Only set result if we haven't already finished
+        if (g.phase !== 'LANDED') {
             g.phase = 'LANDED';
 
+            // Hard Crash Check (High Velocity)
+            if (Math.abs(r.vy) > 10.0) {
+                console.log(`GUIDANCE: CRASH (Speed ${r.vy.toFixed(1)})`);
+                g.landingResult = 'FAILURE';
+                return;
+            }
+
+            // Soft Landing Analysis
             const angleDeg = Math.abs(r.angle * 180 / Math.PI);
-            const isUpright = angleDeg < 5;
+            const isUpright = angleDeg < 5.0; // Strict threshold
             const onPad = Math.abs(r.x - pad.x) < (pad.width / 2 + r.width);
 
-            if (isUpright && onPad) {
-                g.landingResult = 'SUCCESS';
-            } else {
+            if (!isUpright) {
+                console.log(`GUIDANCE: FAILURE - TIPPED (Angle: ${angleDeg.toFixed(1)}°)`);
                 g.landingResult = 'FAILURE';
+            } else if (!onPad) {
+                console.log(`GUIDANCE: FAILURE - MISSED PAD (Dist: ${Math.abs(r.x - pad.x).toFixed(0)})`);
+                g.landingResult = 'FAILURE';
+            } else {
+                console.log("GUIDANCE: SUCCESS - PERFECT LANDING");
+                g.landingResult = 'SUCCESS';
             }
         }
     }
