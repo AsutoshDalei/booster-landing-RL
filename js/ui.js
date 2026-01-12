@@ -128,3 +128,4 @@ export function updateUI(state) {
             UI.landingOutcome.innerText = "STATUS: FLIGHT";
         }
     }
+}
