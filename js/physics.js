@@ -12,7 +12,8 @@ const MASS = 1.0;                // Normalized mass
 const MOMENT_OF_INERTIA = 1000.0;// Resistance to rotation
 const DRAG_COEFFICIENT = 0.05;   // Simple linear drag (air resistance)
 const ANGULAR_DRAG = 2.0;       // Damping for rotation
-const RCS_THRUST = 50.0;        // Torque applied by RCS
+const RCS_THRUST = 100.0;        // Force applied by RCS (updated for force-based application)
+const MIN_THROTTLE = 0.4;       // Minimum throttle when engine is on (realistic rocket behavior)
 
 // Collision Parameters
 const RESTITUTION = 0.0;         // Bounciness (0 = no bounce, reliable landing)
@@ -39,8 +40,11 @@ export function stepPhysics(state, dt) {
     // B. Thrust
     // Applied only if we have fuel (Fuel logic not strictly requested yet, but good practice)
     if (r.throttle > 0) {
-        // Magnitude
-        const thrustMag = r.throttle * THRUST_POWER * MASS;
+        // Calculate power with minimum throttle (realistic rocket behavior)
+        // When throttle > 0, engine power is MIN_THROTTLE + throttle * (1 - MIN_THROTTLE)
+        // This ensures engine cannot go below minimum throttle when on
+        const power = MIN_THROTTLE + r.throttle * (1 - MIN_THROTTLE);
+        const thrustMag = power * THRUST_POWER * MASS;
 
         // Direction
         // Rocket Angle 0 is Up (-Y in screen space? No, usually 0 is Right in Canvas 0 radian)
@@ -99,20 +103,44 @@ export function stepPhysics(state, dt) {
         const leverArm = r.height / 2;
         // The component of thrust perpendicular to rocket axis triggers rotation
         // Perpendicular Force = ThrustMag * sin(gimbal)
-        torque += -leverArm * thrustMag * Math.sin(r.engineGimbal);
+        // Increase torque strength for better angle control (multiply by 1.5 for more responsiveness)
+        torque += -leverArm * thrustMag * Math.sin(r.engineGimbal) * 1.5;
     }
 
-    // C2. RCS Torque
-    if (r.rcsLeft) {
-        // User wants to rotate Left (CCW, negative angle)
-        torque -= RCS_THRUST * MOMENT_OF_INERTIA * dt * 50; // Scaling for feel
-        // Wait, standard Force is F. Torque = T.
-        // Let's just apply direct torque.
-        // Our units are loose. Let's try:
-        torque -= 10000; // Strong jerk
-    }
-    if (r.rcsRight) {
-        torque += 10000;
+    // C2. RCS Force Application (at thruster position)
+    // RCS thrusters are at the top of the rocket and apply force perpendicular to rocket axis
+    // This creates both torque (rotation) and linear velocity change (translation)
+    if (r.rcsLeft || r.rcsRight) {
+        // Calculate thruster position (top of rocket, 86% of height from center)
+        // This matches gym-rocketlander's THRUSTER_HEIGHT = ROCKET_HEIGHT * 0.86
+        const THRUSTER_HEIGHT = r.height * 0.86;
+        
+        // Thruster position relative to rocket center
+        const thrusterOffsetX = Math.sin(r.angle) * THRUSTER_HEIGHT;
+        const thrusterOffsetY = -Math.cos(r.angle) * THRUSTER_HEIGHT;
+        
+        // Force direction: perpendicular to rocket axis
+        // rcsLeft pushes rocket right (positive X), rcsRight pushes rocket left (negative X)
+        const forceDir = r.rcsLeft ? 1 : -1;
+        
+        // Force components perpendicular to rocket axis
+        // When rocket is upright (angle=0), force is horizontal
+        const forceX = forceDir * Math.cos(r.angle) * RCS_THRUST;
+        const forceY = forceDir * Math.sin(r.angle) * RCS_THRUST;
+        
+        // Apply force at center of mass (simplified - in reality force is at thruster position)
+        fx += forceX;
+        fy += forceY;
+        
+        // Force at thruster position also creates torque
+        // Torque = lever_arm × force_perpendicular
+        // Lever arm is the distance from COM to thruster
+        const leverArm = THRUSTER_HEIGHT;
+        // Perpendicular component of force relative to rocket axis
+        const forcePerpendicular = forceDir * RCS_THRUST;
+        // Torque sign: rcsLeft (forceDir=1) creates CCW rotation (negative torque)
+        // rcsRight (forceDir=-1) creates CW rotation (positive torque)
+        torque += -leverArm * forcePerpendicular;
     }
 
     // D. Drag (Simple linear damping)

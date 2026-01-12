@@ -55,7 +55,7 @@ export function initTuning(state) {
     });
 }
 
-const GENERATIONS = 15;
+const GENERATIONS = 8;
 const POPULATION_SIZE = 30;
 
 export function initOptimizer(state, optimizerInstance) {

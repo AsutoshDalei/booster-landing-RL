@@ -21,7 +21,8 @@ MASS = 1.0
 MOMENT_OF_INERTIA = 1000.0
 DRAG_COEFFICIENT = 0.05
 ANGULAR_DRAG = 2.0
-RCS_THRUST = 50.0  # Not directly used in simple step logic in JS, but handy
+RCS_THRUST = 100.0  # Force applied by RCS (updated for force-based application)
+MIN_THROTTLE = 0.4  # Minimum throttle when engine is on (realistic rocket behavior)
 FRICTION = 0.5
 RESTITUTION = 0.0
 STOP_THRESHOLD = 0.5
@@ -34,7 +35,7 @@ PAD_X = 400
 PAD_Y = CANVAS_HEIGHT - 50
 PAD_WIDTH = 120
 ROCKET_WIDTH = 24
-ROCKET_HEIGHT = 80
+ROCKET_HEIGHT = 100  # Updated to match JS physics.js
 
 class FalconEnv:
     def __init__(self):
@@ -44,14 +45,19 @@ class FalconEnv:
 
     def reset(self):
         # Result: [x, y, vx, vy, angle, angularVelocity, throttle, gimbal, fuel, groundContact, landingResult, done, stepCount]
-        # Randomize "Anywhere"
+        # Randomize "Anywhere" - matches JS state.js reset logic
+        # Random Start Conditions: Center +/- 150px (300px total range)
+        # Random initial Angle: 3 to 15 degrees (wider range)
+        angle_mag = np.random.uniform(3.0, 15.0) * (np.pi / 180.0)  # 3-15 degrees in radians
+        random_angle = angle_mag * (1 if np.random.random() < 0.5 else -1)
+        
         self.state = {
-            'x': np.random.uniform(250.0, 550.0),    # Center +/- 150 (400 +/- 150)
-            'y': np.random.uniform(50.0, 300.0),     # Start high-ish
-            'vx': np.random.uniform(-40.0, 40.0),    # More drift
-            'vy': np.random.uniform(0.0, 20.0),      # Initial downward velocity
-            'angle': np.random.uniform(-0.5, 0.5),   # Random orientation
-            'angularVelocity': np.random.uniform(-0.2, 0.2),
+            'x': PAD_X + (np.random.random() - 0.5) * 300.0,  # Center +/- 150 (matches JS)
+            'y': CANVAS_HEIGHT * 0.1,  # Start high (matches JS)
+            'vx': 0.0,  # No initial horizontal velocity (matches JS)
+            'vy': 50.0,  # Initial drop speed (matches JS)
+            'angle': random_angle,  # 3-15 degrees either direction (matches JS)
+            'angularVelocity': 0.0,  # No initial rotation (matches JS)
             'throttle': 0.0,
             'engineGimbal': 0.0,
             'fuel': 100.0,
@@ -73,34 +79,53 @@ class FalconEnv:
         
         s = self.state
         s['throttle'] = throttle
-        s['engineGimbal'] = gimbal * 0.25 # Max 0.25 rad
+        s['engineGimbal'] = gimbal * 0.6  # Max 0.6 rad (updated to match JS autopilot.js)
 
-        # RCS Logic
-        torque_input = 0.0
-        if rcs < -0.3: torque_input = -10000.0
-        elif rcs > 0.3: torque_input = 10000.0
-        
         # --- Physics Update ---
         fx = 0.0
         fy = GRAVITY * MASS
-        torque = torque_input
+        torque = 0.0
         
-        # Thrust
+        # Thrust with minimum throttle (matches JS physics.js)
         if s['throttle'] > 0:
-            thrust_mag = s['throttle'] * THRUST_POWER * MASS
+            # Calculate power with minimum throttle (realistic rocket behavior)
+            # When throttle > 0, engine power is MIN_THROTTLE + throttle * (1 - MIN_THROTTLE)
+            power = MIN_THROTTLE + s['throttle'] * (1 - MIN_THROTTLE)
+            thrust_mag = power * THRUST_POWER * MASS
             thrust_angle = s['angle'] + s['engineGimbal']
             
-            # Thrust pushes opposite to global angle
-            # Standard visual: 0 is Up. thrust_angle is direction of thrust vector.
-            # Wait, JS port: 
-            # fx += Math.sin(thrustAngle) * thrustMag;
-            # fy -= Math.cos(thrustAngle) * thrustMag;
+            # Thrust vector components
             fx += math.sin(thrust_angle) * thrust_mag
             fy -= math.cos(thrust_angle) * thrust_mag
             
-            # Torque
+            # Torque from gimbal (increased by 1.5x for better responsiveness, matches JS)
             lever_arm = ROCKET_HEIGHT / 2.0
-            torque += -lever_arm * thrust_mag * math.sin(s['engineGimbal'])
+            torque += -lever_arm * thrust_mag * math.sin(s['engineGimbal']) * 1.5
+        
+        # RCS Force Application (at thruster position, matches JS physics.js)
+        # RCS thrusters are at the top of the rocket and apply force perpendicular to rocket axis
+        if abs(rcs) > 0.3:  # Deadband threshold
+            # Calculate thruster position (top of rocket, 86% of height from center)
+            THRUSTER_HEIGHT = ROCKET_HEIGHT * 0.86
+            
+            # Force direction: perpendicular to rocket axis
+            # rcs < -0.3 (left) pushes rocket right (positive X)
+            # rcs > 0.3 (right) pushes rocket left (negative X)
+            force_dir = 1.0 if rcs < -0.3 else -1.0
+            
+            # Force components perpendicular to rocket axis
+            force_x = force_dir * math.cos(s['angle']) * RCS_THRUST
+            force_y = force_dir * math.sin(s['angle']) * RCS_THRUST
+            
+            # Apply force at center of mass (simplified)
+            fx += force_x
+            fy += force_y
+            
+            # Force at thruster position also creates torque
+            lever_arm = THRUSTER_HEIGHT
+            force_perpendicular = force_dir * RCS_THRUST
+            # Torque sign: rcsLeft (forceDir=1) creates CCW rotation (negative torque)
+            torque += -lever_arm * force_perpendicular
             
         # Drag
         fx -= s['vx'] * DRAG_COEFFICIENT
@@ -188,26 +213,50 @@ class FalconEnv:
         
         reward = 0.0
         
+        # Calculate altitude
+        pad_top = PAD_Y - 10  # Pad top surface
+        rocket_bottom = s['y'] + ROCKET_HEIGHT / 2.0
+        altitude = max(0.0, pad_top - rocket_bottom)
+        
         # Distance Penalty (Normalized)
         dist_to_pad = abs(s['x'] - PAD_X)
-        reward -= dist_to_pad * 0.005 # Reduced slightly
+        reward -= dist_to_pad * 0.005
         
-        # Guidance Reward (Encourage tilting towards pad)
-        # Detailed logic: Calculate desired tilt to cancel X error
-        # P-Controller for Angle: Target Angle ~ (Target X - Current X)
-        target_angle = (PAD_X - s['x']) * 0.005
-        target_angle = np.clip(target_angle, -0.5, 0.5) # limit to ~30 deg
+        # Guidance Reward (Matches updated guidance.js logic)
+        # When far from ground: allow steering to correct position
+        # When close to ground: prioritize being upright (angle = 0)
+        x_error = s['x'] - PAD_X
         
-        # If we overlap the pad, we want to be upright (target 0)
-        # Shaping: Penalize deviation from target angle
+        if altitude > 30.0:
+            # High altitude: allow steering (matches guidance.js)
+            K_STEER = 0.004  # Updated from 0.003
+            target_angle = -x_error * K_STEER
+            MAX_TILT = 0.3  # Updated from 0.25
+            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
+        elif altitude > 15.0:
+            # Medium altitude: reduce steering (matches guidance.js)
+            K_STEER = 0.002
+            target_angle = -x_error * K_STEER
+            MAX_TILT = 0.15
+            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
+        else:
+            # Low altitude: prioritize upright (matches guidance.js)
+            K_STEER = 0.001
+            target_angle = -x_error * K_STEER
+            MAX_TILT = 0.08
+            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
+        
+        # Penalize deviation from target angle (stronger when close to ground)
         angle_error = abs(s['angle'] - target_angle)
-        reward -= angle_error * 0.5
+        angle_weight = 2.0 if altitude < 15.0 else 0.5  # Stronger penalty when low
+        reward -= angle_error * angle_weight
         
         # Velocity Penalty (Encourage slow landing)
-        # But allow free fall at height
-        # Only penalize if close to ground?
-        # For now, simple damping
-        reward -= abs(s['vy']) * 0.01
+        # More important when close to ground
+        vy_penalty = abs(s['vy']) * 0.01
+        if altitude < 30.0:
+            vy_penalty *= 2.0  # Stronger penalty when close
+        reward -= vy_penalty
         
         # Step Penalty
         reward -= 0.05

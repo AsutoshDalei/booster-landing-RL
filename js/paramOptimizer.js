@@ -24,7 +24,7 @@ const PARAM_BOUNDS = {
 
 // Algorithm parameters
 const POPULATION_SIZE = 30;
-const GENERATIONS = 15;
+const GENERATIONS = 8;
 const MUTATION_RATE = 0.15;
 const CROSSOVER_RATE = 0.7;
 const ELITE_COUNT = 6;

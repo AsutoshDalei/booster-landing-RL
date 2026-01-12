@@ -39,7 +39,8 @@ class PIDController {
 // Tuned Gains (Estimates)
 // Angle: Needs strong response. 
 // Gimbal Range: +/- 0.5 rad. Error 0.1 rad should give significant gimbal.
-const GimbalPID = new PIDController(2.0, 0.0, 1.0, -0.5, 0.5); // was 2.0, 0.0, 1.0. Let's make it stronger?
+// Increased max gimbal range to +/- 0.6 rad for better angle control
+const GimbalPID = new PIDController(2.0, 0.0, 1.0, -0.6, 0.6); // Increased range for better rotation
 // Request said "slightly stronger". Current 2.0 is already high.
 // Let's go Kp=2.5, Kd=1.5.
 // Wait, plan said Kp=0.8. Current file has Kp=2.0 ?? 
@@ -95,29 +96,36 @@ export const Autopilot = {
 
             const throttleCmd = ThrottlePID.update(targetVy, r.vy, dt);
 
-            // Ascent Prevention Clamp (Relaxed)
-            // Allow slight ascent (negative vy) for correction, but clamp ceiling
-            // Hover Throttle ~= 0.33
+            // Improved throttle logic - allow proper slowdown for landing
             let finalThrottle = throttleCmd;
 
-            // If strictly ascending fast (vy < -5), clamp hard.
-            // If hovering (vy ~ 0), allow up to 1.1x Hover to maintain position
-            const hoverThrottle = 100.0 / 300.0;
+            // Calculate hover throttle (throttle needed to counteract gravity)
+            const GRAVITY = 100.0;
+            const THRUST_POWER = 300.0;
+            const hoverThrottle = GRAVITY / THRUST_POWER; // ~0.33
 
-            if (r.vy < -2.0) {
-                // Ascent detected. Limit throttle to ensure we don't accelerate UP further.
-                // Allow holding current upward velocity? No, gravity should win eventually.
-                // Set limit to Hover * 0.95 (Net Downward Accel)
-                const maxAllowed = hoverThrottle * 0.95;
-                if (finalThrottle > maxAllowed) finalThrottle = maxAllowed;
-            } else if (r.vy < 5.0) {
-                // Near hover. Allow slight over-throttle to correct descent rate, but cap it.
-                // Cap at Hover * 1.5?
-                const maxAllowed = hoverThrottle * 1.5;
-                if (finalThrottle > maxAllowed) finalThrottle = maxAllowed;
+            // If ascending (vy < 0), reduce throttle significantly
+            if (r.vy < -1.0) {
+                // Ascending - cut throttle to let gravity pull down
+                finalThrottle = Math.min(finalThrottle, hoverThrottle * 0.9);
+            }
+            // If falling much faster than target, allow full throttle
+            else if (r.vy > targetVy * 1.3) {
+                // Falling too fast - allow full throttle to slow down
+                finalThrottle = Math.min(finalThrottle, 1.0);
+            }
+            // If close to target velocity or falling slowly, allow fine control
+            else if (r.vy <= targetVy * 1.1) {
+                // Close to target or slower - allow up to hover * 1.2 for fine control
+                finalThrottle = Math.min(finalThrottle, hoverThrottle * 1.3);
+            }
+            // Otherwise (falling moderately fast), allow moderate throttle
+            else {
+                finalThrottle = Math.min(finalThrottle, 0.8);
             }
 
-            r.throttle = finalThrottle;
+            // Ensure throttle is in valid range
+            r.throttle = Math.max(0.0, Math.min(1.0, finalThrottle));
         }
 
         // 1. Angle Stabilization (Gimbal)
@@ -126,23 +134,41 @@ export const Autopilot = {
         const gimbalCmd = GimbalPID.update(targetAngle, r.angle, dt);
         r.engineGimbal = gimbalCmd;
 
-        // 2. Angular Velocity Damping (RCS)
+        // 2. Angular Velocity Damping (RCS) - Coordinated with Throttle
         // Goal: Angular Velocity = 0
-        // Deadband: Only fire if > threshold
+        // Coordination: When throttle is high, gimbal is more effective, so RCS is less needed
+        // When throttle is low/off, RCS is primary attitude control
         const deadband = 0.02;
         r.rcsLeft = false;
         r.rcsRight = false;
 
-        if (r.angularVelocity > deadband) {
-            // Spinning CW (Positive) -> Need CCW Torque (Left RCS pushes Right? No, rcsRight creates +Torque, rcsLeft creates -Torque).
-            // Checks physics.js:
-            // rcsLeft -> -Torque (CCW)
-            // rcsRight -> +Torque (CW)
-            // If spin > 0 (CW), we need -Torque -> rcsLeft
-            r.rcsLeft = true;
-        } else if (r.angularVelocity < -deadband) {
-            // Spinning CCW (Negative) -> Need +Torque -> rcsRight
-            r.rcsRight = true;
+        // Adaptive deadband based on throttle
+        // High throttle: gimbal can handle more, so RCS only for fine control (larger deadband)
+        // Low throttle: RCS is primary control, use smaller deadband for more responsiveness
+        const adaptiveDeadband = deadband * (1.0 + r.throttle * 1.5); // Deadband increases with throttle
+        
+        // Only use RCS if angular velocity exceeds adaptive deadband
+        // This prevents RCS from fighting gimbal when throttle is high
+        if (Math.abs(r.angularVelocity) > adaptiveDeadband) {
+            if (r.angularVelocity > adaptiveDeadband) {
+                // Spinning CW (Positive) -> Need CCW Torque -> rcsLeft
+                r.rcsLeft = true;
+            } else if (r.angularVelocity < -adaptiveDeadband) {
+                // Spinning CCW (Negative) -> Need +Torque -> rcsRight
+                r.rcsRight = true;
+            }
+        }
+        
+        // Additional coordination: If gimbal is already providing significant correction,
+        // reduce RCS usage to avoid fighting
+        // When gimbal is large, it's already correcting, so RCS can be more conservative
+        if (Math.abs(r.engineGimbal) > 0.2 && r.throttle > 0.3) {
+            // Gimbal is doing significant work, reduce RCS sensitivity
+            // Only use RCS if angular velocity is quite high
+            if (Math.abs(r.angularVelocity) < adaptiveDeadband * 2.0) {
+                r.rcsLeft = false;
+                r.rcsRight = false;
+            }
         }
 
         // Velocity Hold logic moved to top (Engine Check)
