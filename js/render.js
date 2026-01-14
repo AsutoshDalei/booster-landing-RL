@@ -46,7 +46,13 @@ function drawPad(ctx, pad) {
 
 function drawRocket(ctx, rocket) {
     ctx.save();
-    ctx.translate(rocket.x, rocket.y);
+    // Align visual bottom with physics collision bottom
+    // Physics collision is at y + height/2
+    // Visual bottom is at y + (height * VISUAL_SCALE)/2
+    // Legs extend ~14px below body (unscaled). Scaled extension ~8.4px.
+    // We reduce the offset so legs touch ground, instead of body touching ground.
+    const heightOffset = (rocket.height / 2) * (1 - VISUAL_SCALE) - 8.5;
+    ctx.translate(rocket.x, rocket.y + heightOffset);
     ctx.scale(VISUAL_SCALE, VISUAL_SCALE); // Scale down visual representation
     ctx.rotate(rocket.angle);
 

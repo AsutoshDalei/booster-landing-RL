@@ -96,14 +96,14 @@ function handleCoast(state, g, r, altitude, pad) {
 function handleBurn(state, g, r, altitude, pad) {
     // Engine can turn off mid-flight if conditions warrant, then turn back on
     // This allows for more flexible trajectory control (coast phases)
-    
+
     // Check if we should cut engine (transition back to COAST)
     // Conditions to cut engine:
     // 1. Ascending too fast (vy < -5) - we're going up, cut engine
     // 2. Very high altitude and slow descent - can coast to save fuel
     const isAscending = r.vy < -5.0;
     const isHighAndSlow = altitude > 200 && r.vy < 10.0;
-    
+
     if (isAscending || isHighAndSlow) {
         // Transition back to COAST - engine can turn back on later
         g.phase = 'COAST';
@@ -111,7 +111,7 @@ function handleBurn(state, g, r, altitude, pad) {
         console.log(`GUIDANCE: ENGINE CUT - Coasting (Alt: ${altitude.toFixed(0)}, Vy: ${r.vy.toFixed(1)})`);
         return; // Exit early, will re-enter in COAST phase next frame
     }
-    
+
     // Otherwise, keep engine on
     g.engineEnabled = true;
 
@@ -156,11 +156,11 @@ function handleBurn(state, g, r, altitude, pad) {
 
     // 2. Horizontal Guidance (Steering)
     const xError = r.x - pad.x;
-    
+
     // When very close to ground, prioritize being upright over horizontal positioning
     // Transition smoothly: use steering at high altitude, straighten out when low
     let cmdAngle = 0;
-    
+
     if (altitude > 30) {
         // High enough: allow steering to correct horizontal position
         // Increased steering gain and max tilt for better angle adjustment
@@ -181,7 +181,7 @@ function handleBurn(state, g, r, altitude, pad) {
         const MAX_TILT = 0.08;
         cmdAngle = Math.max(-MAX_TILT, Math.min(MAX_TILT, cmdAngle));
     }
-    
+
     g.targetAngle = cmdAngle;
 
     // 3. Touchdown Detection
@@ -200,13 +200,18 @@ function handleBurn(state, g, r, altitude, pad) {
             // Soft Landing Analysis
             const angleDeg = Math.abs(r.angle * 180 / Math.PI);
             const isUpright = angleDeg < 5.0; // Strict threshold
-            const onPad = Math.abs(r.x - pad.x) < (pad.width / 2 + r.width);
+
+            // Strict Landing: Both legs must be on the pad
+            // This means the center of the rocket must be close enough to the center of the pad
+            // such that the rocket's half-width fits within the pad's half-width.
+            const maxDist = (pad.width / 2) - (r.width / 2);
+            const onPad = Math.abs(r.x - pad.x) <= maxDist;
 
             if (!isUpright) {
                 console.log(`GUIDANCE: FAILURE - TIPPED (Angle: ${angleDeg.toFixed(1)}°)`);
                 g.landingResult = 'FAILURE';
             } else if (!onPad) {
-                console.log(`GUIDANCE: FAILURE - MISSED PAD (Dist: ${Math.abs(r.x - pad.x).toFixed(0)})`);
+                console.log(`GUIDANCE: FAILURE - MISSED PAD (Dist: ${Math.abs(r.x - pad.x).toFixed(0)}, Max: ${maxDist.toFixed(0)})`);
                 g.landingResult = 'FAILURE';
             } else {
                 console.log("GUIDANCE: SUCCESS - PERFECT LANDING");
