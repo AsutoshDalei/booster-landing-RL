@@ -53,13 +53,13 @@ export const SimState = {
     },
 
     tuning: {
-        ignitionAltitude: 400,
-        gimbalKp: 2.5,
-        gimbalKd: 1.5,
+        ignitionAltitude: 251,      // Optimized by Optuna
+        gimbalKp: 2.054,           // Optimized by Optuna
+        gimbalKd: 0.441,           // Optimized by Optuna
         rcsDeadband: 0.02,
-        throttleKp: -0.08,
-        throttleKi: -0.01,
-        throttleKd: -0.03
+        throttleKp: -0.1049,       // Optimized by Optuna
+        throttleKi: -0.0467,       // Optimized by Optuna
+        throttleKd: -0.0344        // Optimized by Optuna
     }
 };
 

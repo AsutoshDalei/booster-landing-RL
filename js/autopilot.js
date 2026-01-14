@@ -36,11 +36,11 @@ class PIDController {
     }
 }
 
-// Tuned Gains (Estimates)
+// Tuned Gains (Optimized by Optuna)
 // Angle: Needs strong response. 
-// Gimbal Range: +/- 0.5 rad. Error 0.1 rad should give significant gimbal.
-// Increased max gimbal range to +/- 0.6 rad for better angle control
-const GimbalPID = new PIDController(2.0, 0.0, 1.0, -0.6, 0.6); // Increased range for better rotation
+// Gimbal Range: +/- 0.6 rad for better angle control
+// Default values: Will be updated from state.tuning if available
+const GimbalPID = new PIDController(2.054, 0.0, 0.441, -0.6, 0.6); // Optimized: Kp=2.054, Kd=0.441
 // Request said "slightly stronger". Current 2.0 is already high.
 // Let's go Kp=2.5, Kd=1.5.
 // Wait, plan said Kp=0.8. Current file has Kp=2.0 ?? 
@@ -52,9 +52,9 @@ const GimbalPID = new PIDController(2.0, 0.0, 1.0, -0.6, 0.6); // Increased rang
 // Kp=2.5, Kd=1.5 is good for fast twitch.
 
 // Velocity: Hover logic.
-// Throttle Range: 0.0 to 1.0. 
-// Plan: Kp = -0.08, Kd = -0.02.
-const ThrottlePID = new PIDController(-0.08, -0.01, -0.03, 0.0, 1.0);
+// Throttle Range: 0.0 to 1.0.
+// Default values: Will be updated from state.tuning if available
+const ThrottlePID = new PIDController(-0.1049, -0.0467, -0.0344, 0.0, 1.0); // Optimized by Optuna
 
 export const Autopilot = {
     update(state, dt) {

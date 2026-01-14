@@ -208,58 +208,42 @@ class FalconEnv:
 
     def _compute_reward(self):
         s = self.state
+        
+        # --- Terminal Rewards (Sparse) ---
         if s['landingResult'] == 'FAILURE': return -100.0
         if s['landingResult'] == 'SUCCESS': return 100.0
         
+        # --- Continuous Monitoring Rewards (Dense) ---
         reward = 0.0
         
-        # Calculate altitude
-        pad_top = PAD_Y - 10  # Pad top surface
-        rocket_bottom = s['y'] + ROCKET_HEIGHT / 2.0
-        altitude = max(0.0, pad_top - rocket_bottom)
+        # 1. Distance Penalty (Minimize distance to pad)
+        # Pad is at PAD_X. 
+        dist_x = abs(s['x'] - PAD_X)
+        reward -= dist_x * 0.01  # -1.0 reward for every 100px away
         
-        # Distance Penalty (Normalized)
-        dist_to_pad = abs(s['x'] - PAD_X)
-        reward -= dist_to_pad * 0.005
+        # 2. Orientation Penalty (Minimize tilt)
+        # Goal: Stay upright (angle = 0)
+        # 1 radian ~= 57 degrees
+        reward -= abs(s['angle']) * 0.5 
         
-        # Guidance Reward (Matches updated guidance.js logic)
-        # When far from ground: allow steering to correct position
-        # When close to ground: prioritize being upright (angle = 0)
-        x_error = s['x'] - PAD_X
+        # 3. Stability Penalty (Minimize spin)
+        reward -= abs(s['angularVelocity']) * 0.1
         
-        if altitude > 30.0:
-            # High altitude: allow steering (matches guidance.js)
-            K_STEER = 0.004  # Updated from 0.003
-            target_angle = -x_error * K_STEER
-            MAX_TILT = 0.3  # Updated from 0.25
-            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
-        elif altitude > 15.0:
-            # Medium altitude: reduce steering (matches guidance.js)
-            K_STEER = 0.002
-            target_angle = -x_error * K_STEER
-            MAX_TILT = 0.15
-            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
-        else:
-            # Low altitude: prioritize upright (matches guidance.js)
-            K_STEER = 0.001
-            target_angle = -x_error * K_STEER
-            MAX_TILT = 0.08
-            target_angle = np.clip(target_angle, -MAX_TILT, MAX_TILT)
+        # 4. Velocity Penalty (Soft Landing Incentive)
+        # Discourage high speeds, especially vertical speed
+        reward -= abs(s['vy']) * 0.005
+        reward -= abs(s['vx']) * 0.005
         
-        # Penalize deviation from target angle (stronger when close to ground)
-        angle_error = abs(s['angle'] - target_angle)
-        angle_weight = 2.0 if altitude < 15.0 else 0.5  # Stronger penalty when low
-        reward -= angle_error * angle_weight
-        
-        # Velocity Penalty (Encourage slow landing)
-        # More important when close to ground
-        vy_penalty = abs(s['vy']) * 0.01
-        if altitude < 30.0:
-            vy_penalty *= 2.0  # Stronger penalty when close
-        reward -= vy_penalty
-        
-        # Step Penalty
+        # 5. Efficiency/Life Penalty
+        # Small negative reward every step to encourage landing (not hovering forever)
+        # But not so high that it suicides.
         reward -= 0.05
+        
+        # 6. Shaping for Altitude (Optional Proximity Incentive)
+        # As it gets closer to ground, the potential for success increases.
+        # We can add a small bonus for surviving close to the ground to differentiate 
+        # crashing high up vs crashing low down? 
+        # For now, let's keep it clean. Less is more for "learning by itself".
         
         return reward
 
