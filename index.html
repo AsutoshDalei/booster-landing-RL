@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SpaceX Landing Simulator</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- ONNX Runtime Web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script>
+        // Force single-threaded execution to avoid "Session mismatch" and "Session already started" errors
+        // caused by threaded WASM backend instability in some environments.
+        if (window.ort) {
+            window.ort.env.wasm.numThreads = 1;
+            window.ort.env.wasm.simd = false;
+            window.ort.env.wasm.proxy = false;
+            console.log("ORT Configured: Single-threaded WASM enforced.");
+        }
+    </script>
 </head>
 
 <body>
@@ -61,6 +73,13 @@
         <div id="tuning-panel" class="hud-panel">
             <h3>GUIDANCE TUNING</h3>
             <div class="control-group">
+                <label>CONTROL MODE</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="controlMode" value="PID" checked> PID</label>
+                    <label><input type="radio" name="controlMode" value="RL"> RL (NN)</label>
+                </div>
+            </div>
+            <div class="control-group">
                 <label>IGNITION ALTITUDE: <span id="val-ign" class="val-highlight">251</span> m</label>
                 <input type="range" id="inp-ign" min="50" max="600" value="251" step="10">
             </div>
@@ -72,14 +91,15 @@
                 <label>DAMPING (Kd): <span id="val-kd" class="val-highlight">0.441</span></label>
                 <input type="range" id="inp-kd" min="0" max="5" value="0.441" step="0.001">
             </div>
-            
+
             <div class="hud-divider"></div>
-            
+
             <!-- Optimizer Controls -->
             <div class="optimizer-section">
                 <h4>AUTO TUNING</h4>
                 <button id="optimize-btn" class="optimize-btn">OPTIMIZE PARAMS</button>
-                <button id="stop-optimize-btn" class="optimize-btn optimize-btn-stop" style="display: none;">STOP</button>
+                <button id="stop-optimize-btn" class="optimize-btn optimize-btn-stop"
+                    style="display: none;">STOP</button>
                 <div id="optimizer-status" class="optimizer-status">Ready</div>
                 <div id="optimizer-progress" class="optimizer-progress">
                     <div id="optimizer-progress-bar" class="optimizer-progress-bar"></div>

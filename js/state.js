@@ -43,6 +43,7 @@ export const SimState = {
     particles: [],
     // Particle structure: { x, y, vx, vy, life (0-1), color }
     autopilotEnabled: true,
+    controlMode: 'PID', // 'PID' or 'RL'
 
     guidance: {
         targetVy: 0,

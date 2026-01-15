@@ -36,6 +36,36 @@ export function initTuning(state) {
         { sl: 'inp-kd', val: 'val-kd', key: 'gimbalKd' }
     ];
 
+    // Control Mode Toggles
+    const radios = document.getElementsByName('controlMode');
+    const optimizerSection = document.querySelector('.optimizer-section');
+    const pidInputs = document.querySelectorAll('#inp-ign, #inp-kp, #inp-kd');
+
+    // Function to update visibility based on mode
+    const updateModeVisibility = (mode) => {
+        if (mode === 'RL') {
+            if (optimizerSection) optimizerSection.style.display = 'none';
+            pidInputs.forEach(inp => inp.disabled = true);
+            // Also fade out PID controls visual? Maybe just disable works.
+        } else {
+            if (optimizerSection) optimizerSection.style.display = 'block';
+            pidInputs.forEach(inp => inp.disabled = false);
+        }
+    };
+
+    radios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                state.controlMode = e.target.value;
+                console.log(`Control Mode Switched to: ${state.controlMode}`);
+                updateModeVisibility(state.controlMode);
+            }
+        });
+    });
+
+    // Initial State Check
+    updateModeVisibility(state.controlMode);
+
     ids.forEach(item => {
         const slider = document.getElementById(item.sl);
         const label = document.getElementById(item.val);
@@ -74,7 +104,7 @@ export function initOptimizer(state, optimizerInstance) {
 
     optimizeBtn.addEventListener('click', async () => {
         if (isRunning) return;
-        
+
         isRunning = true;
         optimizeBtn.style.display = 'none';
         stopBtn.style.display = 'block';
@@ -86,7 +116,7 @@ export function initOptimizer(state, optimizerInstance) {
             optimizerInstance.onProgress = (info) => {
                 statusEl.textContent = `Gen ${info.generation}/${GENERATIONS}, Ind ${info.individual}/${POPULATION_SIZE}`;
                 progressBar.style.width = `${info.progress}%`;
-                
+
                 if (info.bestParams) {
                     resultsEl.innerHTML = `
                         <strong>Best so far:</strong><br>

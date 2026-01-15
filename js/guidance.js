@@ -9,6 +9,52 @@ const T_ACCEL_MAX = 300.0; // Max Thrust Accel (Thrust/Mass)
 const NET_ACCEL = T_ACCEL_MAX - G; // Max Upward Accel
 
 /**
+ * Detects landing result (works for both PID and RL modes)
+ * @param {Object} state - Global Simulation State
+ */
+export function detectLanding(state) {
+    const r = state.rocket;
+    const pad = state.pad;
+    const g = state.guidance;
+
+    // Only check if we haven't already determined a result
+    if (g.landingResult !== null) {
+        return;
+    }
+
+    // Check if rocket has touched down
+    if (r.groundContact) {
+        // Hard Crash Check (High Velocity)
+        if (Math.abs(r.vy) > 10.0) {
+            console.log(`LANDING: CRASH (Speed ${r.vy.toFixed(1)})`);
+            g.landingResult = 'FAILURE';
+            return;
+        }
+
+        // Soft Landing Analysis
+        const angleDeg = Math.abs(r.angle * 180 / Math.PI);
+        const isUpright = angleDeg < 5.0; // Strict threshold
+
+        // Strict Landing: Both legs must be on the pad
+        // This means the center of the rocket must be close enough to the center of the pad
+        // such that the rocket's half-width fits within the pad's half-width.
+        const maxDist = (pad.width / 2) - (r.width / 2);
+        const onPad = Math.abs(r.x - pad.x) <= maxDist;
+
+        if (!isUpright) {
+            console.log(`LANDING: FAILURE - TIPPED (Angle: ${angleDeg.toFixed(1)}°)`);
+            g.landingResult = 'FAILURE';
+        } else if (!onPad) {
+            console.log(`LANDING: FAILURE - MISSED PAD (Dist: ${Math.abs(r.x - pad.x).toFixed(0)}, Max: ${maxDist.toFixed(0)})`);
+            g.landingResult = 'FAILURE';
+        } else {
+            console.log("LANDING: SUCCESS - PERFECT LANDING");
+            g.landingResult = 'SUCCESS';
+        }
+    }
+}
+
+/**
  * Updates the Guidance State Machine.
  * @param {Object} state - Global Simulation State
  * @param {number} dt - Timestep
@@ -185,39 +231,10 @@ function handleBurn(state, g, r, altitude, pad) {
     g.targetAngle = cmdAngle;
 
     // 3. Touchdown Detection
-    if (r.groundContact) {
-        // Only set result if we haven't already finished
-        if (g.phase !== 'LANDED') {
-            g.phase = 'LANDED';
-
-            // Hard Crash Check (High Velocity)
-            if (Math.abs(r.vy) > 10.0) {
-                console.log(`GUIDANCE: CRASH (Speed ${r.vy.toFixed(1)})`);
-                g.landingResult = 'FAILURE';
-                return;
-            }
-
-            // Soft Landing Analysis
-            const angleDeg = Math.abs(r.angle * 180 / Math.PI);
-            const isUpright = angleDeg < 5.0; // Strict threshold
-
-            // Strict Landing: Both legs must be on the pad
-            // This means the center of the rocket must be close enough to the center of the pad
-            // such that the rocket's half-width fits within the pad's half-width.
-            const maxDist = (pad.width / 2) - (r.width / 2);
-            const onPad = Math.abs(r.x - pad.x) <= maxDist;
-
-            if (!isUpright) {
-                console.log(`GUIDANCE: FAILURE - TIPPED (Angle: ${angleDeg.toFixed(1)}°)`);
-                g.landingResult = 'FAILURE';
-            } else if (!onPad) {
-                console.log(`GUIDANCE: FAILURE - MISSED PAD (Dist: ${Math.abs(r.x - pad.x).toFixed(0)}, Max: ${maxDist.toFixed(0)})`);
-                g.landingResult = 'FAILURE';
-            } else {
-                console.log("GUIDANCE: SUCCESS - PERFECT LANDING");
-                g.landingResult = 'SUCCESS';
-            }
-        }
+    if (r.groundContact && g.phase !== 'LANDED') {
+        g.phase = 'LANDED';
+        // Use shared landing detection function
+        detectLanding(state);
     }
 }
 

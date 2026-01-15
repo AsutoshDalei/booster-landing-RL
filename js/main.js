@@ -10,9 +10,10 @@ import * as keyRender from './render.js'; // naming to avoid collision if needed
 import { stepPhysics } from './physics.js';
 import { initControls, updateControls } from './controls.js';
 import { Autopilot } from './autopilot.js';
-import { Guidance } from './guidance.js';
+import { Guidance, detectLanding } from './guidance.js';
 import { initUI, updateUI, initTuning, initOptimizer } from './ui.js';
 import { ParameterOptimizer, setCanvasDimensions } from './paramOptimizer.js';
+import { RLController } from './rl_controller.js';
 
 const canvas = document.getElementById('simCanvas');
 const ctx = canvas.getContext('2d');
@@ -35,6 +36,7 @@ resize(); // Initial setup
 initControls(SimState, resetGame);
 initUI();
 initTuning(SimState);
+RLController.init();
 
 // Initialize parameter optimizer
 // State factory: creates a deep copy of the state structure
@@ -80,9 +82,59 @@ function loop(timestamp) {
     accumulator += dt;
     while (accumulator >= FIXED_DT) {
         updateControls(SimState, FIXED_DT);
-        Guidance.update(SimState, FIXED_DT);
-        Autopilot.update(SimState, FIXED_DT);
+        updateControls(SimState, FIXED_DT);
+
+        // --- Control Logic ---
+        // 1. Check if RL Mode is requested AND Model is loaded
+        if (SimState.controlMode === 'RL' && RLController.modelLoaded) {
+            // Disable Standard Autopilot/Guidance (logic), keep status ON for UI
+            SimState.autopilotEnabled = true;
+
+            // Trigger Inference (Non-blocking)
+            if (!RLController.isBusy) {
+                // Use latest state
+                RLController.getAction(SimState.rocket, SimState.pad).then(action => {
+                    if (action && action !== 'RL_ERROR') {
+                        SimState.rocket.throttle = action.throttle;
+                        SimState.rocket.engineGimbal = action.engineGimbal;
+                        SimState.rocket.rcsLeft = action.rcsLeft;
+                        SimState.rocket.rcsRight = action.rcsRight;
+                    } else if (action === 'RL_ERROR') {
+                        // Safety: Only cut throttle if it's an actual ERROR.
+                        // If action is null (meaning busy/skipped), do nothing (hold previous state).
+                        console.warn("RL Error Detected - Fallback Safe Mode");
+                        SimState.rocket.throttle = 0;
+                        SimState.rocket.rcsLeft = false;
+                        SimState.rocket.rcsRight = false;
+                    }
+                });
+            }
+        }
+        // 2. Otherwise use PID (Default)
+        else {
+            // Even if 'RL' is selected, if model fails to load, fallback to PID? 
+            // Or just if controlMode is PID.
+            // Let's stick to explicit mode. If RL selected but not loaded, do nothing? 
+            // Better fallback: If RL selected & not loaded -> Log warning?
+            // For now: Just standard PID if not (RL && Loaded).
+
+            // Force autopilot enabled if we want it to run? 
+            // Or rely on the "Autopilot" toggle button (key P)?
+            // The request implies "Standard PID" vs "RL". 
+            // Usually PID autopilot is toggled by 'P'. 
+            // RL should probably AUTO-ENABLE itself.
+
+            // Existing logic relies on `autopilotEnabled` flag toggled by 'P'.
+            // If mode is PID, we respect that flag.
+            Guidance.update(SimState, FIXED_DT);
+            Autopilot.update(SimState, FIXED_DT);
+        }
+
         stepPhysics(SimState, FIXED_DT);
+        
+        // Landing detection (works for both PID and RL modes)
+        detectLanding(SimState);
+        
         // Particle update (visuals can run at physics rate or frame rate, let's keep it simple here)
         updateParticles(FIXED_DT);
         accumulator -= FIXED_DT;

@@ -39,9 +39,13 @@ export function stepPhysics(state, dt) {
 
     // B. Thrust
     // Applied only if we have fuel (Fuel logic not strictly requested yet, but good practice)
-    if (r.throttle > 0) {
+    // IMPORTANT: For RL mode, we need a deadband to prevent tiny throttle values from triggering MIN_THROTTLE
+    // RL models can output very small values that shouldn't activate the engine
+    const THROTTLE_DEADBAND = 0.05; // Minimum throttle to actually turn on engine
+    
+    if (r.throttle > THROTTLE_DEADBAND) {
         // Calculate power with minimum throttle (realistic rocket behavior)
-        // When throttle > 0, engine power is MIN_THROTTLE + throttle * (1 - MIN_THROTTLE)
+        // When throttle > deadband, engine power is MIN_THROTTLE + throttle * (1 - MIN_THROTTLE)
         // This ensures engine cannot go below minimum throttle when on
         const power = MIN_THROTTLE + r.throttle * (1 - MIN_THROTTLE);
         const thrustMag = power * THRUST_POWER * MASS;
